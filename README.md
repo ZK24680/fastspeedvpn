@@ -79,7 +79,7 @@ The supplied fastspeed emblem is stored at `app/src/main/res/drawable-nodpi/fast
 ## Limitations
 
 - WARP enrollment and provider egress have not been tested on a device. The registration endpoint is undocumented and may rate-limit or reject third-party clients.
-- A debug APK was successfully assembled on the user's Windows machine. WARP enrollment and provider egress have not been verified on a device.
+- A debug APK was successfully assembled on the user's Windows machine.
 - The connection log is in-memory and is cleared when the app process ends.
 - Android does not let an ordinary app silently toggle lockdown for the user. Configure Always-on and lockdown in Android VPN settings.
 
