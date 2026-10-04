@@ -1,0 +1,9 @@
+.gradle/
+**/build/
+local.properties
+.idea/
+*.iml
+*.conf
+!docs/wireguard-config.template.conf
+*.key
+*.keystore

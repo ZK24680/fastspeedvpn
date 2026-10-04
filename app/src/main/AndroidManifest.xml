@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SYSTEM_EXEMPTED" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <application
+        android:name=".MyWarpApplication"
+        android:allowBackup="false"
+        android:icon="@drawable/fastspeed_logo"
+        android:label="@string/app_name"
+        android:roundIcon="@drawable/fastspeed_logo"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.MyWarpVpn"
+        android:usesCleartextTraffic="false">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- The official tunnel AAR declares this base service. Remove it so the system and
+             GoBackend both use our foreground-capable subclass instead. MyVpnService calls the
+             GoBackend.VpnService lifecycle methods, which publish this instance to the backend. -->
+        <service
+            android:name="com.wireguard.android.backend.GoBackend$VpnService"
+            tools:node="remove" />
+
+        <service
+            android:name=".service.MyVpnService"
+            android:exported="false"
+            android:foregroundServiceType="systemExempted"
+            android:permission="android.permission.BIND_VPN_SERVICE">
+            <intent-filter>
+                <action android:name="android.net.VpnService" />
+            </intent-filter>
+        </service>
+    </application>
+</manifest>
