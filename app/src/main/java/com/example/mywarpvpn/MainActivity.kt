@@ -25,6 +25,9 @@ import android.content.pm.PackageManager
 import com.example.mywarpvpn.ui.MyWarpVpnApp
 import com.example.mywarpvpn.ui.VpnViewModel
 
+private const val ADSTERRA_SMARTLINK_URL =
+    "https://www.profitableratecpmnetwork.com/q1wh01fp2g?key=0fe8dff9dc272bef1d77497916aa4493"
+
 class MainActivity : ComponentActivity() {
     private val viewModel: VpnViewModel by viewModels {
         VpnViewModel.factory(application as MyWarpApplication)
@@ -106,6 +109,15 @@ private fun MainContent(viewModel: VpnViewModel) {
                 context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://www.cloudflare.com/application/terms/")))
             } catch (_: ActivityNotFoundException) {
                 viewModel.clearFeedback()
+            }
+        },
+        onOpenAd = {
+            try {
+                context.startActivity(
+                    Intent(Intent.ACTION_VIEW, android.net.Uri.parse(ADSTERRA_SMARTLINK_URL)),
+                )
+            } catch (_: ActivityNotFoundException) {
+                // No browser or compatible activity is installed.
             }
         },
         onAutoConnectChanged = viewModel::setAutoConnect,

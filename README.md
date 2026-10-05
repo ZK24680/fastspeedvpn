@@ -1,6 +1,6 @@
 # fastspeed
 
-A small learning project for an Android WireGuard client, written in Kotlin with Jetpack Compose. The app can import a WireGuard `.conf` file or request an experimental Cloudflare WARP profile, encrypt it locally, ask Android for VPN consent, and use the official WireGuard for Android tunnel library for the WireGuard userspace tunnel and Android TUN interface.
+A small Android WireGuard client built with Kotlin and Jetpack Compose. FastSpeed can import a WireGuard `.conf` file or request an experimental Cloudflare WARP profile. Version 2.0 adds an optional Adsterra Smartlink card on the connected dashboard; the link opens only after the user taps it.
 
 The WARP setup uses Cloudflare's undocumented consumer registration endpoint. It generates a fresh device key for each setup and does not bundle a shared key or account token. This third-party integration is unsupported, may stop working if Cloudflare changes the endpoint, and may be subject to Cloudflare's terms. FastSpeed is not affiliated with Cloudflare. The standard import flow remains available for configurations obtained from other providers.
 
@@ -28,6 +28,12 @@ Command line builds use the checked-in Gradle wrapper:
 
 On macOS/Linux, use `sh ./gradlew :app:assembleDebug`.
 
+For a Windows debug build, the APK is `app\build\outputs\apk\debug\app-debug.apk`. To make a copy named `FastSpeed-v2.apk`, run:
+
+```powershell
+Copy-Item .\app\build\outputs\apk\debug\app-debug.apk .\FastSpeed-v2.apk
+```
+
 ## What the app does
 
 - Imports and validates the WireGuard `[Interface]` and `[Peer]` configuration with WireGuard's parser.
@@ -35,6 +41,7 @@ On macOS/Linux, use `sh ./gradlew :app:assembleDebug`.
 - Encrypts the configuration using AES-GCM with a key held in Android Keystore. The ciphertext lives under `noBackupFilesDir`; Android backup is disabled.
 - Uses `VpnService.prepare()` for system consent and a foreground `VpnService` with an ongoing notification while connected.
 - Uses the official `com.wireguard.android:tunnel` library and its `GoBackend` / wireguard-go userspace implementation. That backend establishes the Android TUN interface from the config's addresses, DNS, MTU, and peer `AllowedIPs`, and protects its UDP tunnel sockets with `VpnService.protect()`.
+- Shows an optional Adsterra Smartlink card only while connected. The card is labeled as sponsored and opens the user-provided link in an external browser only after a tap; FastSpeed does not auto-open ads.
 - Shows tunnel state, elapsed connection time, configured endpoint, and byte totals returned by WireGuard. These counters are local totals; the app does not read packet contents.
 - Watches default-network changes and attempts a reconnect when a new network becomes available.
 - Keeps only a short in-memory list of operational status messages. It does not log configuration text, private keys, DNS queries, packet contents, or browsing history.
@@ -53,7 +60,7 @@ WARP setup requires Cloudflare's registration endpoint to be reachable directly.
 
 ## Permissions and privacy
 
-The app requests only internet access, foreground-service permissions required for an active VPN, Android notification permission (optional for visible notifications on Android 13+), and Android's built-in VPN consent. No ads, analytics SDK, telemetry, packet capture, DNS collection, or traffic upload are included.
+The app requests only internet access, foreground-service permissions required for an active VPN, Android notification permission (optional for visible notifications on Android 13+), and Android's built-in VPN consent. Version 2.0 includes a clearly labeled Adsterra Smartlink card while connected; the browser opens only after the user taps it. FastSpeed has no ad SDK, analytics SDK, telemetry, packet capture, DNS collection, or traffic upload.
 
 The VPN provider you connect to can still process traffic sent through its endpoint. Review that provider's terms and privacy documentation separately.
 
@@ -78,6 +85,7 @@ The supplied fastspeed emblem is stored at `app/src/main/res/drawable-nodpi/fast
 
 ## Limitations
 
+- The Adsterra Smartlink destination is selected dynamically by the network and can vary. Review the destination before opening it; FastSpeed does not automatically load the link.
 - WARP enrollment and provider egress have not been tested on a device. The registration endpoint is undocumented and may rate-limit or reject third-party clients.
 - A debug APK was successfully assembled on the user's Windows machine.
 - The connection log is in-memory and is cleared when the app process ends.

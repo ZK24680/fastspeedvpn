@@ -77,6 +77,7 @@ fun MyWarpVpnApp(
     onImport: () -> Unit,
     onSetupWarp: () -> Unit,
     onOpenWarpTerms: () -> Unit,
+    onOpenAd: () -> Unit,
     onAutoConnectChanged: (Boolean) -> Unit,
     onOpenVpnSettings: () -> Unit,
     onFeedbackShown: () -> Unit,
@@ -163,6 +164,7 @@ fun MyWarpVpnApp(
                     onDisconnect = onDisconnect,
                     onImport = onImport,
                     onSetupWarp = { showWarpConsent = true },
+                    onOpenAd = onOpenAd,
                     modifier = Modifier.padding(padding),
                 )
                 Destination.SETTINGS -> SettingsScreen(
@@ -214,6 +216,7 @@ private fun HomeScreen(
     onDisconnect: () -> Unit,
     onImport: () -> Unit,
     onSetupWarp: () -> Unit,
+    onOpenAd: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val status = state.status
@@ -327,6 +330,10 @@ private fun HomeScreen(
             }
         }
 
+        if (connected) {
+            item { SponsoredOfferCard(onOpenAd = onOpenAd) }
+        }
+
         if (state.configSummary == null) {
             item {
                 Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
@@ -375,6 +382,30 @@ private fun TrafficTile(label: String, value: String, modifier: Modifier = Modif
     ) {
         Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+private fun SponsoredOfferCard(onOpenAd: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+    ) {
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(
+                "Sponsored offer",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                "Optional Adsterra offer. Tapping opens an external page; FastSpeed does not control its content.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
+            Button(onClick = onOpenAd, modifier = Modifier.fillMaxWidth()) {
+                Text("View offer")
+            }
+        }
     }
 }
 
@@ -499,7 +530,7 @@ private fun AboutScreen(modifier: Modifier = Modifier) {
         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("Privacy", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                Text("The app does not contain ads or telemetry. It does not record packet contents, DNS queries, browsing history, or upload VPN traffic data.")
+                Text("The connected dashboard shows an optional Adsterra sponsored link. It opens an external page only when you tap it. FastSpeed has no ad SDK or analytics SDK, does not auto-open ads, and does not record packet contents, DNS queries, or browsing history.")
                 Text("Configuration files are encrypted with AES-GCM using a key held by Android Keystore and stored in app storage excluded from backup.")
                 Text("WireGuard byte totals are read locally for the dashboard. Your VPN endpoint still processes the traffic you send through it, according to that provider's terms and policies.")
             }
