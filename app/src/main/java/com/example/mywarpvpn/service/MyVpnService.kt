@@ -40,6 +40,7 @@ class MyVpnService : GoBackend.VpnService() {
     private var reconnectAfterNetworkChange = false
     private var notificationStarted = false
     private var statsJob: Job? = null
+    private var sponsoredConnectJob: Job? = null
 
     private val app: MyWarpApplication
         get() = application as MyWarpApplication
@@ -102,13 +103,31 @@ class MyVpnService : GoBackend.VpnService() {
         super.onStartCommand(intent, flags, startId)
 
         when (intent?.action) {
-            ACTION_DISCONNECT -> serviceScope.launch {
-                app.vpnEngine.disconnect()
-                stopForeground(STOP_FOREGROUND_REMOVE)
-                stopSelf(startId)
+            ACTION_DISCONNECT -> {
+                sponsoredConnectJob?.cancel()
+                sponsoredConnectJob = null
+                serviceScope.launch {
+                    app.vpnEngine.disconnect()
+                    stopForeground(STOP_FOREGROUND_REMOVE)
+                    stopSelf(startId)
+                }
             }
 
-            ACTION_CONNECT -> startTunnel(startId)
+            ACTION_CONNECT -> {
+                sponsoredConnectJob?.cancel()
+                sponsoredConnectJob = null
+                startTunnel(startId)
+            }
+
+            ACTION_CONNECT_AFTER_SPONSORED_OFFER -> {
+                sponsoredConnectJob?.cancel()
+                app.stateRepository.setStatus(ConnectionStatus.CONNECTING)
+                sponsoredConnectJob = serviceScope.launch {
+                    delay(SPONSORED_OFFER_CONNECT_DELAY_MS)
+                    sponsoredConnectJob = null
+                    startTunnel(startId)
+                }
+            }
 
             else -> {
                 // Android starts the selected VpnService with an implicit or null intent when
@@ -208,10 +227,13 @@ class MyVpnService : GoBackend.VpnService() {
     companion object {
         const val ACTION_CONNECT = "com.example.mywarpvpn.action.CONNECT"
         const val ACTION_DISCONNECT = "com.example.mywarpvpn.action.DISCONNECT"
+        const val ACTION_CONNECT_AFTER_SPONSORED_OFFER =
+            "com.example.mywarpvpn.action.CONNECT_AFTER_SPONSORED_OFFER"
         private const val NOTIFICATION_CHANNEL_ID = "vpn_connection"
         private const val NOTIFICATION_ID = 1001
         private const val STATISTICS_INTERVAL_MS = 1_000L
         private const val NETWORK_RECONNECT_DELAY_MS = 800L
+        private const val SPONSORED_OFFER_CONNECT_DELAY_MS = 5_000L
 
         fun start(context: Context, action: String) {
             val intent = Intent(context, MyVpnService::class.java).setAction(action)

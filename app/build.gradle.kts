@@ -12,8 +12,8 @@ android {
         applicationId = "com.example.mywarpvpn"
         minSdk = 26
         targetSdk = 36
-        versionCode = 2
-        versionName = "2.0"
+        versionCode = 8
+        versionName = "2.6"
     }
 
     buildFeatures {

@@ -120,7 +120,7 @@ class WireGuardVpnEngine(
     }
 
     companion object {
-        const val TUNNEL_NAME = "fastspeed"
+        const val TUNNEL_NAME = "fastspeedvpn"
     }
 }
 

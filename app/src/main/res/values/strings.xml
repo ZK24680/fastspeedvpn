@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">fastspeed</string>
+    <string name="app_name">fastspeedvpn</string>
     <string name="notification_channel_name">VPN connection</string>
     <string name="notification_channel_description">Shows when the VPN tunnel is active</string>
     <string name="notification_connected">WireGuard tunnel active</string>

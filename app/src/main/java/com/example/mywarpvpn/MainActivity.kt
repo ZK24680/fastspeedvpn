@@ -45,15 +45,36 @@ private fun MainContent(viewModel: VpnViewModel) {
     val screenState by viewModel.uiState.collectAsState()
     var awaitingNotificationResponse by remember { mutableStateOf(false) }
 
+    fun openSponsoredOfferAndConnect() {
+        // Start the foreground VPN service from the visible Connect action, then open the offer.
+        viewModel.connectAfterSponsoredOffer()
+        try {
+            context.startActivity(
+                Intent(Intent.ACTION_VIEW, android.net.Uri.parse(ADSTERRA_SMARTLINK_URL)),
+            )
+        } catch (_: ActivityNotFoundException) {
+            // Keep VPN access available if the device has no app that can open the link.
+            viewModel.connect()
+        }
+    }
+
     val vpnPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
     ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) viewModel.connect() else viewModel.permissionDenied()
+        if (result.resultCode == Activity.RESULT_OK) {
+            openSponsoredOfferAndConnect()
+        } else {
+            viewModel.permissionDenied()
+        }
     }
 
     fun requestVpnPermission() {
         val permissionIntent = VpnService.prepare(context)
-        if (permissionIntent == null) viewModel.connect() else vpnPermissionLauncher.launch(permissionIntent)
+        if (permissionIntent == null) {
+            openSponsoredOfferAndConnect()
+        } else {
+            vpnPermissionLauncher.launch(permissionIntent)
+        }
     }
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
@@ -103,21 +124,14 @@ private fun MainContent(viewModel: VpnViewModel) {
         onConnect = { onConnectPressed() },
         onDisconnect = viewModel::disconnect,
         onImport = { configPicker.launch(arrayOf("*/*")) },
-        onSetupWarp = viewModel::setUpWarp,
+        onSetupWarpAndConnect = {
+            viewModel.setUpWarp(onSuccess = { onConnectPressed() })
+        },
         onOpenWarpTerms = {
             try {
                 context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://www.cloudflare.com/application/terms/")))
             } catch (_: ActivityNotFoundException) {
                 viewModel.clearFeedback()
-            }
-        },
-        onOpenAd = {
-            try {
-                context.startActivity(
-                    Intent(Intent.ACTION_VIEW, android.net.Uri.parse(ADSTERRA_SMARTLINK_URL)),
-                )
-            } catch (_: ActivityNotFoundException) {
-                // No browser or compatible activity is installed.
             }
         },
         onAutoConnectChanged = viewModel::setAutoConnect,
