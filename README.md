@@ -18,7 +18,7 @@ The WARP setup uses Cloudflare's undocumented consumer registration endpoint. It
 3. Allow Gradle sync to download the pinned Android, Compose, WireGuard, and OkHttp dependencies.
 4. Select an Android 8.0+ device or emulator and run the `app` configuration.
 5. Tap **Connect**. If there is no saved configuration, review the WARP disclosure and accept to request a per-device profile. You can also import a valid client `.conf` file from Settings.
-6. Approve Android's VPN and notification prompts. Connect opens the clearly labeled Adsterra Smartlink in an external app and starts the VPN tunnel after a 5-second delay. You can disconnect normally from the app.
+6. Approve Android's VPN and notification prompts. Connect opens the clearly labeled sponsored Smartlink in an external app and starts the VPN tunnel after a 5-second delay. You can disconnect normally from the app.
 
 Command line builds use the checked-in Gradle wrapper:
 
@@ -37,7 +37,7 @@ On macOS/Linux, use `sh ./gradlew :app:assembleDebug`.
 - Encrypts the configuration using AES-GCM with a key held in Android Keystore. The ciphertext lives under `noBackupFilesDir`; Android backup is disabled.
 - Uses `VpnService.prepare()` for system consent and a foreground `VpnService` with an ongoing notification while connected.
 - Uses the official `com.wireguard.android:tunnel` library and its `GoBackend` / wireguard-go userspace implementation. That backend establishes the Android TUN interface from the config's addresses, DNS, MTU, and peer `AllowedIPs`, and protects its UDP tunnel sockets with `VpnService.protect()`.
-- When the user taps **Connect**, opens the Adsterra Smartlink in an external app and starts the VPN tunnel after a 5-second delay. The button is labeled **Sponsored offer**; the app does not simulate ad clicks or claim that a visit will earn revenue.
+- When the user taps **Connect**, opens a sponsored Smartlink in an external app and starts the VPN tunnel after a 5-second delay. The button is labeled **Sponsored offer**; the app does not simulate ad clicks or claim that a visit will earn revenue.
 - Shows tunnel state, elapsed connection time, configured endpoint, and byte totals returned by WireGuard. These counters are local totals; the app does not read packet contents.
 - Watches default-network changes and attempts a reconnect when a new network becomes available.
 - Keeps only a short in-memory list of operational status messages. It does not log configuration text, private keys, DNS queries, packet contents, or browsing history.
