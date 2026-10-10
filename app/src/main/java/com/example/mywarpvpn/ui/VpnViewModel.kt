@@ -36,9 +36,9 @@ class VpnViewModel(
     private val stateRepository: VpnStateRepository,
     private val preferencesRepository: PreferencesRepository,
 ) : ViewModel() {
-    private val busy = MutableStateFlow(false)
+    private val busy = MutableStateFlow(true)
     private val feedback = MutableStateFlow<String?>(null)
-    private val mutableUiState = MutableStateFlow(VpnScreenState())
+    private val mutableUiState = MutableStateFlow(VpnScreenState(busy = true))
     val uiState = mutableUiState
 
     init {
@@ -49,21 +49,25 @@ class VpnViewModel(
             }.collect { mutableUiState.value = it }
         }
         viewModelScope.launch {
-            val summary = withContext(Dispatchers.IO) {
-                try {
-                    app.configStore.describeConfig()
-                } catch (cancelled: CancellationException) {
-                    throw cancelled
-                } catch (_: Exception) {
-                    null
+            try {
+                val summary = withContext(Dispatchers.IO) {
+                    try {
+                        app.configStore.describeConfig()
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (_: Exception) {
+                        null
+                    }
                 }
-            }
-            stateRepository.setConfigSummary(summary)
-            val settings = preferencesRepository.settings.first()
-            if (summary != null && settings.autoConnectOnAppOpen &&
-                VpnService.prepare(app) == null && !app.vpnEngine.isConnected()
-            ) {
-                MyVpnService.start(app, MyVpnService.ACTION_CONNECT)
+                stateRepository.setConfigSummary(summary)
+                val settings = preferencesRepository.settings.first()
+                if (summary != null && settings.autoConnectOnAppOpen &&
+                    VpnService.prepare(app) == null && !app.vpnEngine.isConnected()
+                ) {
+                    MyVpnService.start(app, MyVpnService.ACTION_CONNECT)
+                }
+            } finally {
+                busy.value = false
             }
         }
     }
@@ -75,6 +79,15 @@ class VpnViewModel(
         }
         feedback.value = null
         MyVpnService.start(app, MyVpnService.ACTION_CONNECT)
+    }
+
+    fun connectAfterSponsoredOffer() {
+        if (app.configStore.hasConfig().not()) {
+            feedback.value = "Set up WARP or import a WireGuard configuration before connecting."
+            return
+        }
+        feedback.value = null
+        MyVpnService.start(app, MyVpnService.ACTION_CONNECT_AFTER_SPONSORED_OFFER)
     }
 
     fun disconnect() {
@@ -126,7 +139,7 @@ class VpnViewModel(
         }
     }
 
-    fun setUpWarp() {
+    fun setUpWarp(onSuccess: (() -> Unit)? = null) {
         if (busy.value) return
         feedback.value = null
         viewModelScope.launch {
@@ -141,7 +154,12 @@ class VpnViewModel(
                     com.example.mywarpvpn.domain.model.ConnectionStatus.DISCONNECTED,
                     "Experimental Cloudflare WARP profile created",
                 )
-                feedback.value = "WARP profile created and encrypted on this device. Tap Connect to start."
+                feedback.value = if (onSuccess == null) {
+                    "WARP profile created and encrypted on this device. Tap Connect to start."
+                } else {
+                    null
+                }
+                onSuccess?.invoke()
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {

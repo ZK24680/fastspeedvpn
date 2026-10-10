@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -75,7 +76,7 @@ fun MyWarpVpnApp(
     onConnect: () -> Unit,
     onDisconnect: () -> Unit,
     onImport: () -> Unit,
-    onSetupWarp: () -> Unit,
+    onSetupWarpAndConnect: () -> Unit,
     onOpenWarpTerms: () -> Unit,
     onAutoConnectChanged: (Boolean) -> Unit,
     onOpenVpnSettings: () -> Unit,
@@ -103,7 +104,7 @@ fun MyWarpVpnApp(
     var showWarpConsent by remember { mutableStateOf(false) }
     val snackbar = remember { SnackbarHostState() }
     val title = when (destination) {
-        Destination.HOME -> "fastspeed"
+        Destination.HOME -> "fastspeedvpn"
         Destination.SETTINGS -> "Settings"
         Destination.ABOUT -> "About"
     }
@@ -159,10 +160,15 @@ fun MyWarpVpnApp(
                 Destination.HOME -> HomeScreen(
                     state = state.vpn,
                     isBusy = state.busy,
-                    onConnect = onConnect,
+                    onConnect = {
+                        if (state.vpn.configSummary == null) {
+                            showWarpConsent = true
+                        } else {
+                            onConnect()
+                        }
+                    },
                     onDisconnect = onDisconnect,
                     onImport = onImport,
-                    onSetupWarp = { showWarpConsent = true },
                     modifier = Modifier.padding(padding),
                 )
                 Destination.SETTINGS -> SettingsScreen(
@@ -171,7 +177,6 @@ fun MyWarpVpnApp(
                     autoConnect = state.settings.autoConnectOnAppOpen,
                     onAutoConnectChanged = onAutoConnectChanged,
                     onImport = onImport,
-                    onSetupWarp = { showWarpConsent = true },
                     isBusy = state.busy,
                     onOpenVpnSettings = onOpenVpnSettings,
                     modifier = Modifier.padding(padding),
@@ -186,23 +191,24 @@ fun MyWarpVpnApp(
                 title = { Text("Experimental WARP setup") },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("FastSpeed creates a fresh WireGuard key pair on this device. It sends Cloudflare the public key, device model, locale, and terms-acceptance time to request a WARP profile. The private key stays on this device and is stored in encrypted app storage.")
+                        Text("FastSpeed creates a fresh WireGuard key pair on this device. If you agree, it sends Cloudflare the public key, device model, locale, and terms-acceptance time to request a WARP profile. The private key stays on this device and is stored in encrypted app storage.")
                         Text("This uses an undocumented third-party integration that Cloudflare may change or block. FastSpeed is not a Cloudflare app. Your VPN traffic will pass through Cloudflare when connected.")
                         Text("Review Cloudflare's terms before continuing.")
                         TextButton(onClick = onOpenWarpTerms) { Text("Open Cloudflare terms") }
                     }
                 },
                 confirmButton = {
-                    TextButton(onClick = {
-                        showWarpConsent = false
-                        onSetupWarp()
-                    }) { Text("Agree and set up") }
+                        TextButton(onClick = {
+                            showWarpConsent = false
+                            onSetupWarpAndConnect()
+                        }) { Text("Agree and connect") }
                 },
                 dismissButton = {
                     TextButton(onClick = { showWarpConsent = false }) { Text("Cancel") }
                 },
             )
         }
+
     }
 }
 
@@ -213,13 +219,14 @@ private fun HomeScreen(
     onConnect: () -> Unit,
     onDisconnect: () -> Unit,
     onImport: () -> Unit,
-    onSetupWarp: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val status = state.status
     val connected = status == ConnectionStatus.CONNECTED
-    val pending = status == ConnectionStatus.CONNECTING || status == ConnectionStatus.DISCONNECTING
-    val endpoint = state.configSummary?.endpoint
+    val showSponsoredOfferBadge = !isBusy &&
+        status != ConnectionStatus.CONNECTED &&
+        status != ConnectionStatus.CONNECTING &&
+        status != ConnectionStatus.DISCONNECTING
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(state.connectedSinceMillis) {
         while (state.connectedSinceMillis != null) {
@@ -259,16 +266,44 @@ private fun HomeScreen(
                             containerColor = if (connected) Color(0xFFB53B50) else MaterialTheme.colorScheme.primary,
                         ),
                     ) {
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                when {
+                                    connected -> "Disconnect"
+                                    status == ConnectionStatus.CONNECTING -> "Cancel connection"
+                                    status == ConnectionStatus.DISCONNECTING -> "Disconnecting…"
+                                    isBusy -> if (state.configSummary == null) "Setting up…" else "Importing…"
+                                    else -> "Connect"
+                                },
+                                fontSize = 17.sp,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            if (showSponsoredOfferBadge) {
+                                Text(
+                                    "Sponsored offer",
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .offset(x = (-6).dp, y = (-6).dp)
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(Color(0xFFDDF5E1))
+                                        .padding(horizontal = 5.dp, vertical = 2.dp),
+                                    color = Color(0xFF155A2B),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                            }
+                        }
+                    }
+                    if (showSponsoredOfferBadge) {
+                        Spacer(Modifier.height(8.dp))
                         Text(
-                            when {
-                                connected -> "Disconnect"
-                                status == ConnectionStatus.CONNECTING -> "Cancel connection"
-                                status == ConnectionStatus.DISCONNECTING -> "Disconnecting…"
-                                isBusy -> if (state.configSummary == null) "Setting up…" else "Importing…"
-                                else -> "Connect"
-                            },
-                            fontSize = 17.sp,
-                            fontWeight = FontWeight.SemiBold,
+                            "Opens a sponsored webpage. VPN connects after 5 seconds.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                     if (connected) {
@@ -287,20 +322,6 @@ private fun HomeScreen(
                         modifier = Modifier.fillMaxWidth().padding(16.dp),
                         color = MaterialTheme.colorScheme.onErrorContainer,
                     )
-                }
-            }
-        }
-
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            ) {
-                Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Connection", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    DetailRow("Server endpoint", endpoint ?: "Not configured")
-                    DetailRow("Tunnel protocol", "WireGuard")
-                    DetailRow("Session time", duration)
                 }
             }
         }
@@ -331,12 +352,11 @@ private fun HomeScreen(
             item {
                 Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
                     Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text("Add your VPN configuration", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        Text("Connect with Cloudflare WARP", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                         Text(
-                            "Set up a per-device WARP profile or import a WireGuard client config from a provider you are authorized to use.",
+                            "Tap Connect to create a per-device WARP profile automatically, or import a WireGuard client config from a provider you are authorized to use.",
                             color = MaterialTheme.colorScheme.onSecondaryContainer,
                         )
-                        Button(onClick = onSetupWarp, enabled = !isBusy) { Text("Set up Cloudflare WARP") }
                         Button(onClick = onImport, enabled = !isBusy) { Text("Import configuration") }
                     }
                 }
@@ -385,7 +405,6 @@ private fun SettingsScreen(
     autoConnect: Boolean,
     onAutoConnectChanged: (Boolean) -> Unit,
     onImport: () -> Unit,
-    onSetupWarp: () -> Unit,
     isBusy: Boolean,
     onOpenVpnSettings: () -> Unit,
     modifier: Modifier = Modifier,
@@ -399,15 +418,12 @@ private fun SettingsScreen(
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                 Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("VPN configuration", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    Text(if (state.configSummary == null) "No configuration imported" else "Encrypted on this device")
+                    Text(if (state.configSummary == null) "Tap Connect to create a WARP profile automatically" else "Encrypted on this device")
                     state.configSummary?.let { summary ->
                         DetailRow("Endpoint", summary.endpoint)
                         DetailRow("DNS", summary.dnsServers)
                         DetailRow("MTU", summary.mtu)
                         DetailRow("Peers", summary.peerCount.toString())
-                    }
-                    if (state.configSummary == null) {
-                        Button(onClick = onSetupWarp, enabled = !isBusy) { Text("Set up Cloudflare WARP") }
                     }
                     TextButton(onClick = onImport) { Text(if (state.configSummary == null) "Import config" else "Replace config") }
                 }
@@ -491,7 +507,7 @@ private fun AboutScreen(modifier: Modifier = Modifier) {
                     contentDescription = "fastspeed logo",
                     modifier = Modifier.size(96.dp).clip(RoundedCornerShape(22.dp)),
                 )
-                Text("fastspeed", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                Text("fastspeedvpn", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 Text("A learning-oriented Android WireGuard client built with Kotlin and Jetpack Compose.")
                 Text("WireGuard tunnel implementation: official WireGuard for Android tunnel library (Apache-2.0).")
             }
@@ -499,7 +515,7 @@ private fun AboutScreen(modifier: Modifier = Modifier) {
         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("Privacy", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                Text("The app does not contain ads or telemetry. It does not record packet contents, DNS queries, browsing history, or upload VPN traffic data.")
+                Text("When you tap Connect, FastSpeed opens a sponsored Smartlink page in an external app; the page may collect information about that visit. The app has no ad SDK or analytics and does not record packet contents, DNS queries, browsing history, or upload VPN traffic data.")
                 Text("Configuration files are encrypted with AES-GCM using a key held by Android Keystore and stored in app storage excluded from backup.")
                 Text("WireGuard byte totals are read locally for the dashboard. Your VPN endpoint still processes the traffic you send through it, according to that provider's terms and policies.")
             }
